@@ -294,7 +294,7 @@ if not st.session_state['logged_in']:
         #st.rerun()
 
 if st.session_state['logged_in']:
-    st.set_page_config(layout = "wide")
+    st.set_page_config(layout="wide")
     st.write("## Unit Selection")
     st.write("###### Choose the unit you would like to analyze from the dropdown menu below. You can select from Unit 1, Unit 2, or Unit 3 to view performance metrics and analyze student progress in each specific unit.")
     selection = st.selectbox('Select the unit',['unit1','unit2','unit3'])
