@@ -291,7 +291,7 @@ if not st.session_state['logged_in']:
     login_button = st.button('Login')
     if login_button:
         st.session_state['logged_in']=True
-        st.rerun()
+        #st.rerun()
 
 if st.session_state['logged_in']:
     st.set_page_config(layout = "wide")
