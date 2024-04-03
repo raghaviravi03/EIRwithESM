@@ -314,11 +314,12 @@ if st.session_state['logged_in']:
     with specific:
         display_specific_avg_scores(st.session_state['school_id'], st.session_state['teacher_id'],selection)
     students = list(chemistry_unit1[(chemistry_unit1['teacherID'] == st.session_state['teacher_id']) & (chemistry_unit1['schoolID'] == st.session_state['school_id'])].stuID)
-    st.write("## Check performance of a specific student")
-    st.write("Use the dropdown menu below to select a student and view their individual performance scores. This section allows you to analyze the performance of individual students, view their scores across different questions, and identify areas for improvement or further support.")
-    student_id = st.selectbox('Select a student to view more information',students,index=None)
-    if student_id:
-        student_scores(st.session_state['school_id'], st.session_state['teacher_id'], student_id)
+    if students:
+        st.write("## Check performance of a specific student")
+        st.write("Use the dropdown menu below to select a student and view their individual performance scores. This section allows you to analyze the performance of individual students, view their scores across different questions, and identify areas for improvement or further support.")
+        student_id = st.selectbox('Select a student to view more information', students, index=None)
+        if student_id:
+            student_scores(st.session_state['school_id'], st.session_state['teacher_id'], student_id)
         #display_question_counts(st.session_state['school_id'], st.session_state['teacher_id'], selection)
     
     st.markdown('# Student Emotions Explorer')
