@@ -5,6 +5,9 @@ import pandas as pd
 import plotly.graph_objs as go
 import plotly.express as px
 import numpy as np
+import smtplib
+from email.message import EmailMessage
+import streamlit as st
 
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in']=False
@@ -280,21 +283,14 @@ def plot_emotions(df):
 # Create a placeholder for the login form
 #ogin_placeholder = st.empty()
 
-if not st.session_state['logged_in']:
-    st.title('Student Performance Dashboard!')
-    st.write("#### Please login with your school ID and teacher ID below")
-    school_id = st.text_input('Enter School ID below:')
-    teacher_id = st.text_input('Enter Teacher ID below:')
-
-    st.session_state['school_id']=school_id
-    st.session_state['teacher_id']=teacher_id
-    login_button = st.button('Login')
+if not st.session_state.get('logged_in', False):
+    school_id, teacher_id, login_button = login_page()
     if login_button:
-        st.session_state['logged_in']=True
-        st.rerun()
-
-if st.session_state['logged_in']:
-    st.set_page_config(layout = "wide")
+        st.session_state['logged_in'] = True
+        st.session_state['school_id'] = school_id
+        st.session_state['teacher_id'] = teacher_id
+else:
+    st.set_page_config(layout="wide")
     st.write("## Unit Selection")
     st.write("###### Choose the unit you would like to analyze from the dropdown menu below. You can select from Unit 1, Unit 2, or Unit 3 to view performance metrics and analyze student progress in each specific unit.")
     selection = st.selectbox('Select the unit',['unit1','unit2','unit3'])
@@ -350,3 +346,49 @@ if st.session_state['logged_in']:
     df.replace(vals_all_maps, inplace=True)
     
     plot_emotions(df)
+    
+    #############################################Email##########################################
+    
+    st.markdown("## Send a Message")
+    
+    PORT = 587  
+    EMAIL_SERVER = "smtp-mail.outlook.com"
+
+    from_mail = st.text_input('Please enter your email address')
+    pwd = st.text_input('Please enter your password',type="password")
+
+
+    sender_email = from_mail
+    password_email = pwd
+
+    to_email = st.text_input('Please enter the email of the receiver')
+    sub = st.text_input('Please enter the subject')
+    cont = st.text_area('Please enter the body of the email', height=200)
+
+
+
+    def send_email(subject, receiver_email, content):
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = sender_email
+        msg["To"] = receiver_email
+
+        msg.set_content(content)
+
+        with smtplib.SMTP(EMAIL_SERVER, PORT) as server:
+            server.starttls()
+            server.login(sender_email, password_email)
+            server.sendmail(sender_email, receiver_email, msg.as_string())
+            
+    send = st.button('Send', type='primary')
+
+    if from_mail and pwd and to_email and sub and cont:
+        if send:
+            print(cont)
+            send_email(
+                    subject=sub,
+                    receiver_email=to_email,
+                    content = cont
+                )
+    else:
+        st.error('Please fill all fields!')
