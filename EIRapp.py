@@ -21,6 +21,8 @@ if 'teacher_id' not in st.session_state:
 student_id=None
 if 'emotions_loaded' not in st.session_state:
     st.session_state['emotions_loaded']=pd.read_excel('8ESM.xlsx')
+    
+download_df1=download_df2=download_df3=[]
 
 emotions = st.session_state['emotions_loaded']
 emotions.teacher = emotions['teacher'].astype(str)
@@ -150,7 +152,7 @@ def display_specific_avg_scores(school_id, teacher_id, selection):
     st.write("Specific average scores allow you to assess the overall performance of your students compared to others in the same unit.")
     st.plotly_chart(fig)
     st.write("By analyzing how your students perform on average across various questions, you can gauge the effectiveness of your teaching methods and curriculum delivery.")
-    
+    return question_avg_sorted
         
 def color(x, student_id, temp):
     maximum = temp.Scores.max()
@@ -187,6 +189,7 @@ def student_scores(school_id,teacher_id,student_id):
     df_colored = df_colored.style.apply(highlight,args=[temp], axis=1)
     #df_colored[['Scores']] = df_colored[['Scores']].style.apply(highlight,args=[temp], axis=1)
     st.dataframe(df_colored, width = 500)
+    return df_colored
     
 def display_question_counts(school_id, teacher_id, unit):
     st.write("#### Question Counts for Selected Teacher and Unit")  
@@ -211,6 +214,37 @@ def display_question_counts(school_id, teacher_id, unit):
     # Display counts in a table
     question_counts_df = pd.DataFrame({'Question': question_counts.index, 'Correct Count': question_counts.values})
     st.table(question_counts_df)
+
+def plot_overall_emotions(df):
+    
+    mean_df = df[['active', 'anxious', 'bored', 'challenge', 'competitive', 'concentrate', 'confident', 'confused', 'connect', 'control', 'cooperative', 'determined', 'enjoy', 'excited', 'exploring', 'giveup', 'happy', 'imagination', 'importantfuture', 'importantyou', 'interest', 'lonely', 'otherexpect', 'proud', 'selfexpect', 'skill', 'solutions', 'stress', 'success', 'time']].dropna(how='all').fillna(0)
+    means = mean_df.mean()
+    
+    pos_emotions = ['active', 'challenge', 'competitive', 'concentrate', 'confident', 'connect', 'control', 'cooperative',
+                'determined', 'enjoy', 'excited', 'exploring', 'happy', 'imagination', 'importantfuture', 'importantyou',
+               'interest', 'otherexpect', 'proud', 'selfexpect', 'skill', 'solutions', 'success', 'time']
+
+    neg_emotions = ['anxious', 'bored', 'confused', 'giveup', 'lonely', 'stress']
+    
+    em = pd.DataFrame(means)
+    em.columns=['Rating']
+    em_class = []
+    for i in em.index:
+        if i in pos_emotions:
+            em_class.append('Positive')
+        elif i in neg_emotions:
+            em_class.append('Negative')
+            
+    em['category'] = em_class
+    em.reset_index(inplace=True)
+    em.sort_values(by=['category','Rating'], inplace=True, ascending=False)
+    em['Color']='Neutral'
+    em.iloc[:5,-1]='Positive_high'
+    em.iloc[-6:-1, -1] = 'Negative_high'
+
+    fig_avg = px.bar(em,x='index',y='Rating',color='Color', color_discrete_sequence=["green", "blue" ,"red"])
+    fig_avg.update_layout(showlegend=False)
+    st.plotly_chart(fig_avg, use_container_width=True)
 
 def plot_emotions(df):
     temp = df.T.reset_index()
@@ -275,9 +309,7 @@ def plot_emotions(df):
             st.plotly_chart(fig)
     else:
         st.write("No emotion data available.")
-
-
-    
+        
 #school_id, teacher_id, login_button = login_page()
 
 # Create a placeholder for the login form
@@ -289,6 +321,7 @@ if not st.session_state.get('logged_in', False):
         st.session_state['logged_in'] = True
         st.session_state['school_id'] = school_id
         st.session_state['teacher_id'] = teacher_id
+        st.rerun()
 else:
     st.set_page_config(layout="wide")
     st.write("## Unit Selection")
@@ -308,29 +341,51 @@ else:
     with overall:
         display_overall_avg_scores(selection)
     with specific:
-        display_specific_avg_scores(st.session_state['school_id'], st.session_state['teacher_id'],selection)
+        download_df1 = display_specific_avg_scores(st.session_state['school_id'], st.session_state['teacher_id'],selection)
     students = list(chemistry_unit1[(chemistry_unit1['teacherID'] == st.session_state['teacher_id']) & (chemistry_unit1['schoolID'] == st.session_state['school_id'])].stuID)
     st.write("## Check performance of a specific student")
     st.write("Use the dropdown menu below to select a student and view their individual performance scores. This section allows you to analyze the performance of individual students, view their scores across different questions, and identify areas for improvement or further support.")
-    student_id = st.selectbox('Select a student to view more information',students,index=None)
+    student_id = st.selectbox('Select a student to view more information', students)
     if student_id:
-        student_scores(st.session_state['school_id'], st.session_state['teacher_id'], student_id)
+        download_df2 = student_scores(st.session_state['school_id'], st.session_state['teacher_id'], student_id)
         #display_question_counts(st.session_state['school_id'], st.session_state['teacher_id'], selection)
     
     st.markdown('# Student Emotions Explorer')
     st.write("Understanding students' emotional experiences in the learning environment is crucial for creating supportive and engaging educational experiences. This section provides insights into the emotions expressed by students over time, allowing you to gain a deeper understanding of students' well-being and engagement levels.")
    
-    st.write("First step is to choose a specific teacher to analyze the emotional responses of their students and then select a particular student to explore their emotional journey.")
-    st.write("Dive into emotions expressed by students over different time periods, such as days, months, or years, to identify trends and patterns.")
-    left, right = st.columns(2)
-    left2,mid2,right2,rightmost2 = st.columns(4)
+    st.write("First step is to choose a specific teacher to analyze the overall emotional responses of their students.")
     
     emotions_teachers = list(emotions.teacher.unique())
     
-    teacher_id2 = left.selectbox('Select a teacher',emotions_teachers)
+    teacher_id2 = st.selectbox('Select a teacher',emotions_teachers)
     df = emotions[emotions.teacher == teacher_id2]
-    student_id2 = right.selectbox('Select a student',list(df.student.unique()))
+    plot_overall_emotions(df)
+    
+    st.markdown("### Dive deep into a specific student's emotions")
+    st.write("Here you can also select a particular student to explore a specific student's emotional journey.")
+    st.write("Dive into emotions expressed by each student over different time periods, such as days, months, or years, to identify trends and patterns.")
+    
+    
+    #left, right = st.columns(2)
+    left2,mid2,right2,rightmost2 = st.columns(4)
+    
+    #emotions_teachers = list(emotions.teacher.unique())
+    
+    #teacher_id2 = left.selectbox('Select a teacher',emotions_teachers)
+    #df = emotions[emotions.teacher == teacher_id2]
+    student_id2 = st.selectbox('Select a student',list(df.student.unique()))
     df = df[df.student==student_id2]
+    
+    download_df3 = df.copy()
+    
+        
+    #     download_df = pd.read_excel('multiple.xlsx')
+        
+    #     st.download_button(
+    #     label="Download data",
+    #     data=download_df,
+    #     file_name = 'data.xlsx'
+    # )
     
     respyear = left2.selectbox('Select response year', list(df.respyear.unique()))
     df = df[df.respyear==respyear]
@@ -347,6 +402,20 @@ else:
     
     plot_emotions(df)
     
+    if len(download_df1) and download_df2 and len(download_df3):
+        
+        with pd.ExcelWriter('multiple.xlsx', engine='xlsxwriter') as writer:
+            download_df1.to_excel(writer, sheet_name='Sheeta')
+            download_df2.to_excel(writer, sheet_name='Sheetb')
+            download_df3.to_excel(writer, sheet_name='Sheetc',index=False)
+        
+        with open('multiple.xlsx', "rb") as template_file:
+            template_byte = template_file.read()
+            st.download_button(label="Download Data",
+                                data=template_byte,
+                                file_name="data.xlsx",
+                                type='primary')
+    
     #############################################Email##########################################
     
     st.markdown("## Send a Message")
@@ -356,16 +425,12 @@ else:
 
     from_mail = st.text_input('Please enter your email address')
     pwd = st.text_input('Please enter your password',type="password")
-
-
     sender_email = from_mail
     password_email = pwd
 
     to_email = st.text_input('Please enter the email of the receiver')
     sub = st.text_input('Please enter the subject')
     cont = st.text_area('Please enter the body of the email', height=200)
-
-
 
     def send_email(subject, receiver_email, content):
         msg = EmailMessage()
